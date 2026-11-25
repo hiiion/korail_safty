@@ -24,7 +24,7 @@ python -m venv .venv
 source .venv/bin/activate
 
 # 2) 패키지 설치
-pip install -r requirements.txt
+pip install -r requirements-dev.txt   # 테스트 포함 (운영: requirements.txt)
 
 # 3) 환경설정
 cp .env.example .env        # Windows: copy .env.example .env
@@ -103,6 +103,36 @@ flask run --host 0.0.0.0
 - **판정·종합의견은 참고용**이며, 실제 안전 판단은 관련 규정과 담당자의 판단에 따릅니다.
 
 ---
+
+## 2-1. Vercel + Supabase 배포
+
+Vercel은 요청마다 서버리스 함수로 Flask를 실행하고(`api/index.py`, `vercel.json`), 파일시스템이 유지되지 않으므로
+DB는 **Supabase Postgres**, 사진·서명은 **Supabase Storage 비공개 버킷**에 저장합니다.
+사진은 항상 앱의 `/photos/<id>`(권한 확인)를 거쳐 내려가며, Supabase 서비스 키는 서버 환경변수에만 둡니다.
+
+**현재 배포본:** https://korail-safty.vercel.app — Vercel 마켓플레이스 Supabase 연동(서울 리전)으로 만들어
+`POSTGRES_URL`·`SUPABASE_URL`·`SUPABASE_SERVICE_ROLE_KEY`가 Vercel에 자동 등록되어 있고 앱이 그대로 읽습니다.
+`vercel env pull .env.vercel --environment production`으로 내려받아 로컬에서 `init-db` 등을 운영 DB에 실행할 수 있습니다.
+Supabase 공개 API(anon 키)로 테이블이 노출되지 않도록 **모든 테이블에 RLS를 켜 두었습니다** — 마이그레이션으로 테이블을 추가하면 새 테이블도 RLS를 켜세요.
+코드 수정 후 재배포: `vercel deploy --prod`
+
+(수동으로 Supabase를 직접 만드는 경우)
+1. Supabase에서 프로젝트 생성 → 다음 값을 확인
+   - **Connect → Transaction pooler** 연결 문자열(포트 6543) → `DATABASE_URL`
+   - **Project Settings → API**: Project URL → `SUPABASE_URL`, `service_role` 키 → `SUPABASE_SERVICE_KEY`
+2. 로컬에 `.env.production` 파일을 만들고(깃·Vercel 업로드 제외됨) 위 값과 `SECRET_KEY`, `SESSION_COOKIE_SECURE=1` 입력
+3. 스키마·기본 템플릿·버킷 생성 후 관리자 계정 만들기 (PowerShell)
+   ```powershell
+   Get-Content .env.production | ForEach-Object { if ($_ -match '^\s*([^#=]+)=(.*)$') { Set-Item "env:$($matches[1].Trim())" $matches[2].Trim() } }
+   .venv\Scripts\python.exe -m flask --app run.py init-db
+   .venv\Scripts\python.exe -m flask --app run.py create-admin
+   ```
+4. Vercel 프로젝트 환경변수(Production)에 같은 값 등록 후 `vercel deploy --prod`
+
+제약: Vercel은 요청 본문이 **4.5MB**로 제한됩니다. 사진은 브라우저에서 1280px JPEG로 줄여 올리므로 문제없지만,
+사진이 많이 든 **JSON 불러오기**는 실패할 수 있습니다(로컬 실행본에서 불러온 뒤 같은 DB를 쓰세요).
+`flask backup`은 SQLite 전용이며, Supabase는 대시보드의 백업 기능을 사용합니다.
+Postgres로 같은 테스트를 돌리려면 `TEST_DATABASE_URL=postgresql://... pytest`.
 
 ## 3. 폴더 구조
 

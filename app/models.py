@@ -154,16 +154,19 @@ class Inspection(db.Model):
     deleted_at = db.Column(db.Text)
     deleted_reason = db.Column(db.Text)
 
-    inspector = db.relationship("User", foreign_keys=[inspector_id])
+    # 목록·대시보드에서 N+1 쿼리를 막기 위해 자식들은 selectin으로 한 번에 읽는다
+    # (원격 DB에서는 쿼리 1회가 곧 네트워크 왕복 1회).
+    inspector = db.relationship("User", foreign_keys=[inspector_id], lazy="selectin")
     categories = db.relationship(
         "InspectionCategory", backref="inspection", cascade="all, delete-orphan",
-        order_by="InspectionCategory.sort_order, InspectionCategory.id", passive_deletes=True,
+        order_by="InspectionCategory.sort_order, InspectionCategory.id", passive_deletes=True, lazy="selectin",
     )
     items = db.relationship(
         "InspectionItem", backref="inspection", cascade="all, delete-orphan",
-        order_by="InspectionItem.sort_order, InspectionItem.id", passive_deletes=True, overlaps="items",
+        order_by="InspectionItem.sort_order, InspectionItem.id", passive_deletes=True, overlaps="items", lazy="selectin",
     )
-    signatures = db.relationship("Signature", backref="inspection", cascade="all, delete-orphan", passive_deletes=True)
+    signatures = db.relationship("Signature", backref="inspection", cascade="all, delete-orphan", passive_deletes=True,
+                                 lazy="selectin")
     change_logs = db.relationship(
         "ResultChangeLog", backref="inspection", cascade="all, delete-orphan",
         order_by="ResultChangeLog.changed_at, ResultChangeLog.id", passive_deletes=True,
@@ -252,7 +255,7 @@ class InspectionCategory(db.Model):
     sort_order = db.Column(db.Integer, nullable=False, default=0)
     items = db.relationship(
         "InspectionItem", backref="category",
-        order_by="InspectionItem.sort_order, InspectionItem.id", overlaps="inspection,items",
+        order_by="InspectionItem.sort_order, InspectionItem.id", overlaps="inspection,items", lazy="selectin",
     )
 
     @property
@@ -282,10 +285,11 @@ class InspectionItem(db.Model):
     deleted_at = db.Column(db.Text)
     updated_at = db.Column(db.Text, nullable=False, default=now_iso)
 
-    action = db.relationship("ItemAction", backref="item", uselist=False, cascade="all, delete-orphan", passive_deletes=True)
+    action = db.relationship("ItemAction", backref="item", uselist=False, cascade="all, delete-orphan", passive_deletes=True,
+                             lazy="selectin")
     photos = db.relationship(
         "Photo", backref="item", cascade="all, delete-orphan",
-        order_by="Photo.created_at, Photo.id", passive_deletes=True,
+        order_by="Photo.created_at, Photo.id", passive_deletes=True, lazy="selectin",
     )
 
     __table_args__ = (

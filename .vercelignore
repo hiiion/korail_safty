@@ -1,0 +1,13 @@
+.venv
+.env
+.env.*
+!.env.example
+instance
+backups
+__pycache__
+.pytest_cache
+tests
+reference
+.claude
+/*.md
+/*.html

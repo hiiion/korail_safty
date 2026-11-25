@@ -18,14 +18,28 @@ PW = "Passw0rd1"
 
 @pytest.fixture()
 def app(tmp_path):
+    # TEST_DATABASE_URL=postgresql://... 를 주면 Postgres(Supabase와 같은 엔진)로 같은 테스트를 돌린다.
+    pg = os.environ.get("TEST_DATABASE_URL")
+    if pg:
+        from app.config import database_url, engine_options
+
+        os.environ["DATABASE_URL"] = pg
+        uri = database_url()
+        extra = {"SQLALCHEMY_ENGINE_OPTIONS": engine_options(uri)}
+    else:
+        uri = "sqlite:///" + str(tmp_path / "test.db").replace("\\", "/")
+        extra = {}
     app = create_app({
+        **extra,
         "TESTING": True,
         "SECRET_KEY": "test-secret",
-        "SQLALCHEMY_DATABASE_URI": "sqlite:///" + str(tmp_path / "test.db").replace("\\", "/"),
+        "SQLALCHEMY_DATABASE_URI": uri,
         "UPLOAD_DIR": str(tmp_path / "uploads"),
         "WTF_CSRF_ENABLED": False,
     })
     with app.app_context():
+        if pg:
+            db.drop_all()
         db.create_all()
         seed_default_template()
         for uname, name, role, org in (

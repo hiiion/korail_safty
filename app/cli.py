@@ -27,10 +27,19 @@ def register(app):
     @app.cli.command("init-db")
     def init_db():
         """instance/·DB·uploads 생성 + 마이그레이션 적용 + 기본 템플릿 시드."""
+        from .services import storage
         from .services.images import upload_root
 
-        os.makedirs(current_app.instance_path, exist_ok=True)
-        os.makedirs(upload_root(), exist_ok=True)
+        if current_app.config["SQLALCHEMY_DATABASE_URI"].startswith("sqlite"):
+            os.makedirs(current_app.instance_path, exist_ok=True)
+        if storage.is_remote():
+            try:
+                made = storage.ensure_bucket()
+            except storage.StorageError as e:
+                raise click.ClickException(str(e))
+            click.echo("Supabase Storage 비공개 버킷을 만들었습니다." if made else "Supabase Storage 버킷 확인 완료.")
+        else:
+            os.makedirs(upload_root(), exist_ok=True)
         if os.path.isdir(os.path.join(MIGRATIONS_DIR, "versions")) and os.listdir(os.path.join(MIGRATIONS_DIR, "versions")):
             from flask_migrate import upgrade
 
@@ -41,14 +50,15 @@ def register(app):
             click.echo("테이블을 생성했습니다. (migrations 폴더 없음)")
         if seed_default_template():
             click.echo("기본 체크리스트 템플릿(7개 분야 38개 항목)과 기본 설정을 등록했습니다.")
-        click.echo(f"DB 준비 완료: {_db_file()}")
+        click.echo(f"DB 준비 완료: {db.engine.url.render_as_string(hide_password=True)}")
 
     @app.cli.command("create-admin")
     @click.option("--username", prompt="관리자 아이디")
     @click.option("--name", prompt="이름")
     @click.option("--org", prompt="소속 부서", default="", show_default=False)
     @click.option("--password", prompt="비밀번호 (8자 이상, 영문+숫자)", hide_input=True, confirmation_prompt="비밀번호 확인")
-    def create_admin(username, name, org, password):
+    @click.option("--must-change", is_flag=True, help="첫 로그인 때 비밀번호 변경 강제")
+    def create_admin(username, name, org, password, must_change):
         """관리자 계정을 대화식으로 생성합니다."""
         from .auth import PW_RULE_MSG, password_ok
 
@@ -59,7 +69,7 @@ def register(app):
             raise click.ClickException(PW_RULE_MSG)
         if User.query.filter_by(username=username).first():
             raise click.ClickException("이미 존재하는 아이디입니다.")
-        u = User(username=username, name=name.strip(), org=org.strip(), role="admin", must_change_password=0)
+        u = User(username=username, name=name.strip(), org=org.strip(), role="admin", must_change_password=1 if must_change else 0)
         u.set_password(password)
         db.session.add(u)
         db.session.commit()

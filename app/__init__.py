@@ -28,7 +28,10 @@ def create_app(test_config=None):
             "SECRET_KEY가 설정되지 않았습니다. .env 파일에 SECRET_KEY를 지정하세요. "
             "(예: python -c \"import secrets; print(secrets.token_hex(32))\")"
         )
-    os.makedirs(app.instance_path, exist_ok=True)
+    try:
+        os.makedirs(app.instance_path, exist_ok=True)
+    except OSError:
+        pass  # Vercel 등 읽기 전용 파일시스템 (DB·사진은 Supabase 사용)
 
     db.init_app(app)
     migrate.init_app(app, db, render_as_batch=True)

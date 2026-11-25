@@ -6,3 +6,9 @@ instance/
 backups/
 .pytest_cache/
 .claude/settings.local.json
+.env.*
+!.env.example
+.vercel
+
+.vercel
+.env*
