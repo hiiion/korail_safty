@@ -114,7 +114,7 @@ DB는 **Supabase Postgres**, 사진·서명은 **Supabase Storage 비공개 버�
 `POSTGRES_URL`·`SUPABASE_URL`·`SUPABASE_SERVICE_ROLE_KEY`가 Vercel에 자동 등록되어 있고 앱이 그대로 읽습니다.
 `vercel env pull .env.vercel --environment production`으로 내려받아 로컬에서 `init-db` 등을 운영 DB에 실행할 수 있습니다.
 Supabase 공개 API(anon 키)로 테이블이 노출되지 않도록 **모든 테이블에 RLS를 켜 두었습니다** — 마이그레이션으로 테이블을 추가하면 새 테이블도 RLS를 켜세요.
-코드 수정 후 재배포: `vercel deploy --prod`
+**자동 배포:** GitHub `hiiion/korail_safty`의 `main`에 푸시하면 Vercel이 자동으로 운영 배포합니다 (다른 브랜치는 미리보기 배포). 수동 배포가 필요하면 `vercel deploy --prod`
 
 (수동으로 Supabase를 직접 만드는 경우)
 1. Supabase에서 프로젝트 생성 → 다음 값을 확인
