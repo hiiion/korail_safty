@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% from "_macros.html" import csrf %}
+{% block title %}사용자 관리{% endblock %}
+{% block hdr_sub %}사용자 관리{% endblock %}
+{% block content %}
+<h1 class="page-title">사용자 관리</h1>
+<p class="page-sub">같은 <b>소속</b>의 사용자끼리 서로의 점검을 조회할 수 있습니다. 새 계정과 비밀번호를 초기화한 계정은 최초 로그인 시 비밀번호를 변경해야 합니다.</p>
+<div class="card"><h2>＋ 사용자 추가</h2>
+  <form method="post" class="adm-form">{{ csrf() }}<input type="hidden" name="act" value="create">
+    <div class="field"><label class="f" for="u-id">아이디<span class="req">*</span></label><input class="inp" id="u-id" type="text" name="username" maxlength="40" required autocomplete="off"></div>
+    <div class="field"><label class="f" for="u-name">이름<span class="req">*</span></label><input class="inp" id="u-name" type="text" name="name" maxlength="40" required></div>
+    <div class="field"><label class="f" for="u-org">소속</label><input class="inp" id="u-org" type="text" name="org" maxlength="60" placeholder="예: 수도권철도차량정비단"></div>
+    <div class="field"><label class="f" for="u-role">역할<span class="req">*</span></label><select class="inp" id="u-role" name="role">{% for r in roles %}<option value="{{ r }}">{{ ROLE_LABELS[r] }}</option>{% endfor %}</select></div>
+    <div class="field"><label class="f" for="u-pw">초기 비밀번호</label><input class="inp" id="u-pw" type="password" name="password" autocomplete="new-password" placeholder="비워두면 임시 비밀번호 생성"></div>
+    <div class="field"><button class="btn primary block" type="submit">추가</button></div>
+  </form>
+  <p class="hint m0">{{ rule }}</p>
+</div>
+<div class="card tbl-wrap">
+  <table class="tbl small">
+    <thead><tr><th>아이디</th><th>이름 · 소속 · 역할 · 사용</th><th>상태</th><th>관리</th></tr></thead>
+    <tbody>
+    {% for u in users %}
+    <tr class="{{ 'off' if not u.is_active }}">
+      <td><b>{{ u.username }}</b>{% if u.id == current_user.id %}<br><span class="chip">나</span>{% endif %}</td>
+      <td>
+        <form method="post" class="adm-form">{{ csrf() }}<input type="hidden" name="act" value="update"><input type="hidden" name="user_id" value="{{ u.id }}">
+          <input class="inp" type="text" name="name" value="{{ u.name }}" maxlength="40" aria-label="이름">
+          <input class="inp" type="text" name="org" value="{{ u.org }}" maxlength="60" aria-label="소속" placeholder="소속">
+          <select class="inp" name="role" aria-label="역할">{% for r in roles %}<option value="{{ r }}" {{ 'selected' if u.role == r }}>{{ ROLE_LABELS[r] }}</option>{% endfor %}</select>
+          <select class="inp" name="is_active" aria-label="사용 여부"><option value="1" {{ 'selected' if u.is_active }}>사용</option><option value="0" {{ 'selected' if not u.is_active }}>중지</option></select>
+          <button class="btn sm" type="submit">저장</button>
+        </form>
+      </td>
+      <td>
+        {% if u.locked_until and u.locked_until > now %}<span class="chip ng">잠김 ~{{ u.locked_until|kst }}</span><br>{% endif %}
+        {% if u.must_change_password %}<span class="chip warn">비밀번호 변경 필요</span><br>{% endif %}
+        <span class="hint">최근 로그인 {{ u.last_login_at|kst if u.last_login_at else '-' }}</span>
+      </td>
+      <td><div class="tools m0">
+        {% if u.locked_until and u.locked_until > now %}
+        <form method="post">{{ csrf() }}<input type="hidden" name="act" value="unlock"><input type="hidden" name="user_id" value="{{ u.id }}"><button class="btn sm" type="submit">잠금 해제</button></form>
+        {% endif %}
+        <form method="post" data-confirm="'{{ u.username }}'의 비밀번호를 임시 비밀번호로 초기화하시겠습니까?">{{ csrf() }}<input type="hidden" name="act" value="reset"><input type="hidden" name="user_id" value="{{ u.id }}"><button class="btn sm outline" type="submit">비밀번호 초기화</button></form>
+      </div></td>
+    </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

@@ -1,0 +1,87 @@
+{#- A4 보고서 본문 (참고 아티팩트 buildReport 구성 + 결재 정보) — r: services/report.build_report -#}
+{%- set i = r.info -%}{%- set c = r.counts -%}{%- set insp = r.insp -%}
+{%- macro photo(pid) -%}<img src="{{ url_for('api.view_photo', photo_id=pid) }}" alt="" loading="lazy">{%- endmacro -%}
+<div class="head-row">
+  <div class="docno">
+    <div><b>관리번호</b> {{ insp.report_no or '(확인 시 자동 발급)' }}</div>
+    <div><b>작성일</b> {{ (insp.confirmed_at or insp.submitted_at or r.now)|kst_date }}</div>
+    <div class="mt8"><span class="badge-mode">{{ r.mode_label }}</span>{% if r.mode == 'latest' %}<div>현황 기준일: {{ r.now|kst }}</div>{% endif %}</div>
+  </div>
+  <table class="sign">
+    <tr><th>점검자</th><th>확인자</th></tr>
+    <tr>
+      <td>{% if r.sig_inspector %}<img src="{{ url_for('api.view_signature', pid=insp.public_id, role='inspector') }}" alt="점검자 서명">{{ r.sig_inspector.signer_name }}{% else %}{{ i.inspector }}{% endif %}</td>
+      <td>{% if r.sig_confirmer %}<img src="{{ url_for('api.view_signature', pid=insp.public_id, role='confirmer') }}" alt="확인자 서명">{{ r.sig_confirmer.signer_name }}{% endif %}</td>
+    </tr>
+  </table>
+</div>
+<h1>철도차량 안전점검 보고서</h1>
+<div class="rpt-sub">스마트 철도차량 안전점검 시스템 자동 생성 · 담당자 최종 검토 필요</div>
+
+<h2>1. 점검 기본정보</h2>
+<table>
+  <tr><th>점검자</th><td>{{ i.inspector }}</td><th>소속 부서</th><td>{{ i.dept }}</td></tr>
+  <tr><th>점검 일시</th><td>{{ i.date }} {{ i.time }}</td><th>점검 유형</th><td>{{ i.insp_type }}</td></tr>
+  <tr><th>점검 장소</th><td>{{ i.place }}</td><th>점검 대상</th><td>{{ i.target_label }}</td></tr>
+  <tr><th>작업구역</th><td>{{ i.zone_label }}</td><th>작업 유형</th><td>{{ i.work_type_label }}</td></tr>
+  {% if i.target == '철도차량' %}<tr><th>차량 종류</th><td>{{ i.vehicle_type }}</td><th>차량번호</th><td>{{ i.vehicle_no }}</td></tr>{% endif %}
+  {% if i.target == '정비설비' %}<tr><th>설비명</th><td>{{ i.equip_name }}</td><th>설비 관리번호</th><td>{{ i.equip_no }}</td></tr>{% endif %}
+  <tr><th>점검 시작</th><td>{{ insp.started_at|kst if insp.started_at else '-' }}</td><th>종료(제출)</th><td>{{ insp.submitted_at|kst if insp.submitted_at else '-' }}{% if insp.started_at and insp.submitted_at %} ({{ duration_text(insp.started_at, insp.submitted_at) }}){% endif %}</td></tr>
+</table>
+
+<h2>2. 점검 결과 요약</h2>
+<table class="avoid"><tr><th>전체 항목</th><th>적합</th><th>부적합</th><th>해당 없음</th><th>적합률</th></tr>
+  <tr><td>{{ c.total }}{% if c.none %} <span class="c-none">(미점검 {{ c.none }})</span>{% endif %}</td>
+    <td class="c-ok">{{ c.ok }} ({{ r.fmt_pct(r.pct_total.ok) }})</td><td class="c-ng">{{ c.ng }} ({{ r.fmt_pct(r.pct_total.ng) }})</td>
+    <td class="c-na">{{ c.na }} ({{ r.fmt_pct(r.pct_total.na) }})</td><td><b>{{ r.fmt_pct(c.rate) }}</b></td></tr></table>
+<div class="sumbar avoid"><i class="sb-ok" data-w="{{ r.bar.ok }}"></i><i class="sb-ng" data-w="{{ r.bar.ng }}"></i><i class="sb-na" data-w="{{ r.bar.na }}"></i></div>
+<div class="muted rpt-small">적합률 = 적합 ÷ (적합 + 부적합) × 100 · 비율은 전체 항목 대비</div>
+<table class="mt8"><tr><th>분야</th><th>항목 수</th><th>적합</th><th>부적합</th><th>해당 없음</th></tr>
+  {% for cr in r.cat_rows %}<tr><td>{{ cr.name }}</td><td>{{ cr.total }}</td><td class="c-ok">{{ cr.ok }}</td><td class="c-ng">{{ cr.ng }}</td><td class="c-na">{{ cr.na }}</td></tr>{% endfor %}
+</table>
+
+<h2>3. 분야별 점검 결과</h2>
+<table><thead><tr><th class="w-no">No</th><th class="w-cat">분야</th><th>점검 항목</th><th class="w-res">결과</th><th class="w-rem">비고</th></tr></thead><tbody>
+{% for row in r.rows %}<tr><td>{{ row.no }}</td><td>{{ row.cat }}</td><td>{{ row.name }}</td><td class="c-{{ row.result or 'none' }}">{{ row.label }}</td>
+  <td>{% for x in row.remark %}{{ x }}{% if not loop.last %}<br>{% endif %}{% endfor %}</td></tr>{% endfor %}
+</tbody></table>
+
+<h2>4. 부적합 사항 및 개선조치{{ ' (최신 현황)' if r.mode == 'latest' }}</h2>
+{% if r.ng_list %}
+<table><thead><tr><th>No</th><th>항목</th><th>부적합 내용</th><th>원인</th><th>위험도</th><th>개선조치</th><th>담당자</th><th>예정일</th><th>상태</th></tr></thead><tbody>
+{% for x in r.ng_list %}<tr><td>{{ loop.index }}</td><td>{{ x.it.name }}</td><td>{{ x.g.content }}</td><td>{{ x.g.cause }}</td><td>{{ x.risk_label }}</td>
+  <td>{{ x.g.action }}</td><td>{{ x.g.owner }}</td><td>{{ x.g.due }}</td>
+  <td>{{ x.status_label }}{% if x.g.done_date and x.g.status == 'done' %}<br>({{ x.g.done_date }}){% endif %}{% if x.overdue %}<br><b class="c-ng">기한초과</b>{% endif %}{% if x.repeat %}<br><b class="rp-rep">반복</b>{% endif %}</td></tr>{% endfor %}
+</tbody></table>
+{% else %}<p>부적합 사항 없음</p>{% endif %}
+{% if r.logs %}
+<h2>4-1. 개선조치 변경 이력</h2>
+<table><tr><th>일시</th><th>항목</th><th>변경 내용</th></tr>
+{% for l in r.logs %}<tr><td>{{ l.at|kst }}</td><td>{{ l.item }}</td><td>{{ l.field }}: {{ l.from }} → {{ l.to }}</td></tr>{% endfor %}</table>
+{% endif %}
+{% if r.change_logs %}
+<h2>4-2. 부적합 결과 변경·삭제 이력</h2>
+<table><tr><th>일시</th><th>항목</th><th>내용</th><th>사유</th></tr>
+{% for l in r.change_logs %}<tr><td>{{ l.changed_at|kst }}</td><td>{{ l.item.name if l.item else '' }}</td>
+  <td>{% if l.kind == 'change' %}부적합 → {{ RESULT_LABELS.get(l.to_result, '미점검') }}{% else %}부적합 항목 삭제{% endif %}</td><td>{{ l.reason }}</td></tr>{% endfor %}</table>
+{% endif %}
+
+<h2>5. 현장 사진</h2>
+{% if r.pairs %}<div class="rpt-subh">부적합 개선 전·후</div>
+<div class="pgrid one">{% for x in r.pairs %}<div class="pcell"><div class="pair">
+  <div>{% if x.it.before %}{{ photo(x.it.before[0]) }}{% else %}<div class="ph-none">개선 전 사진 없음</div>{% endif %}<div class="cap">개선 전</div></div>
+  <div>{% if x.it.after %}{{ photo(x.it.after[0]) }}{% else %}<div class="ph-none">개선 후 사진 없음</div>{% endif %}<div class="cap">개선 후</div></div>
+</div><div class="cap"><b>[{{ x.cat }}] {{ x.it.name }}</b> · {{ x.status_label }}</div></div>{% endfor %}</div>{% endif %}
+{% if r.photos %}<div class="rpt-subh">점검 항목 사진</div>
+<div class="pgrid">{% for x in r.photos %}<div class="pcell">{{ photo(x.id) }}<div class="cap">{{ x.cap }}</div></div>{% endfor %}</div>{% endif %}
+{% if not r.pairs and not r.photos %}<p>첨부 사진 없음</p>{% endif %}
+
+<h2>6. 종합의견</h2>
+<div class="opinion avoid" id="rptOpinion">{{ r.opinion }}</div>
+
+{% if r.workflow %}
+<h2>7. 결재 이력</h2>
+<table class="wf"><tr><th>일시</th><th>구분</th><th>처리자</th><th>사유</th></tr>
+{% for w in r.workflow %}<tr><td>{{ w.created_at|kst }}</td><td>{{ {'submit': '제출', 'confirm': '확인(확정)', 'reject': '반려'}[w.action] }}</td><td>{{ w.user.name if w.user else '' }}</td><td>{{ w.reason or '' }}</td></tr>{% endfor %}</table>
+{% endif %}
+<div class="note">※ 본 보고서의 점검 항목과 판정 기준은 시연용 예시이며 실제 기관의 공식 안전점검 기준이 아닙니다.<br>※ 종합의견은 자동 생성 초안을 바탕으로 작성되었으며, 위험도·작업중지 필요 여부 등 최종 안전 판단은 담당자가 검토·확정하여야 합니다.</div>

@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>안전점검 보고서 {{ r.insp.report_no or '' }}</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/report.css') }}">
+</head>
+<body class="print-page">
+<div class="bar">
+  <button class="btn primary" type="button" id="printBtn">🖨 인쇄 / PDF 저장</button>
+  <span class="hint">인쇄창에서 대상(프린터)을 'PDF로 저장'으로 선택하면 PDF 파일로 저장됩니다. 용지: A4 세로</span>
+</div>
+<div class="a4 rpt">{% include "inspections/_report.html" %}</div>
+<script src="{{ url_for('static', filename='js/print.js') }}"></script>
+</body>
+</html>

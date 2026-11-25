@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#003A75">
+<meta name="csrf-token" content="{{ csrf_token() }}">
+<title>{% block title %}{{ APP_NAME }}{% endblock %}</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}">
+{% block head %}{% endblock %}
+</head>
+<body data-page="{{ page|default('') }}">
+{% from "_macros.html" import logo %}
+{% block body %}
+{% set NAV = [
+  ('dashboard', '🏠', '대시보드', url_for('views.home')),
+  ('inspect', '📝', '점검 작성', url_for('views.home', inspect=1)),
+  ('ng', '⚠️', '부적합 관리', url_for('views.ng')),
+  ('history', '📚', '점검 이력', url_for('views.history')),
+  ('settings', '⚙️', '설정', url_for('views.settings')),
+] %}
+<div id="app">
+  <header class="header">
+    <div class="title">스마트 철도차량 안전점검 <small>{% block hdr_sub %}{% endblock %}</small></div>
+    <button class="save-state hidden" id="saveState" data-act="retry-save" type="button" aria-live="polite"></button>
+    <span class="who">{{ current_user.name }} · {{ current_user.role_label }}</span>
+    <a class="btn hide-sm" href="{{ url_for('auth.password') }}">비밀번호</a>
+    <form method="post" action="{{ url_for('auth.logout') }}" data-confirm="로그아웃하시겠습니까?&#10;작성 중인 점검은 서버에 자동 저장되어 다시 로그인하면 이어서 작성할 수 있습니다.">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <button class="btn" type="submit">로그아웃</button>
+    </form>
+  </header>
+  <div id="dangerBanner" class="danger-banner hidden" role="alert"></div>
+  <div class="layout">
+    <nav class="sidebar" aria-label="주 메뉴">
+      {% for key, ic, label, href in NAV %}
+      <a href="{{ href }}" class="{{ 'on' if page == key }}" {% if key == 'inspect' %}data-act="inspect-nav"{% endif %} {{ 'aria-current=page' if page == key }}><span class="ic" aria-hidden="true">{{ ic }}</span><span>{{ label }}</span></a>
+      {% endfor %}
+      {% if current_user.is_admin %}
+      <div class="sep"></div><div class="sub">관리자</div>
+      <a href="{{ url_for('admin.users') }}" class="{{ 'on' if request.endpoint == 'admin.users' }}"><span class="ic" aria-hidden="true">👥</span><span>사용자 관리</span></a>
+      <a href="{{ url_for('admin.templates') }}" class="{{ 'on' if request.endpoint == 'admin.templates' }}"><span class="ic" aria-hidden="true">📋</span><span>체크리스트 템플릿</span></a>
+      <a href="{{ url_for('admin.audit_logs') }}" class="{{ 'on' if request.endpoint == 'admin.audit_logs' }}"><span class="ic" aria-hidden="true">🔍</span><span>감사로그</span></a>
+      {% endif %}
+    </nav>
+    <main class="main{% block main_cls %}{% endblock %}" id="main" {% block main_attrs %}{% endblock %}>
+      <div class="wrap">
+      {% with msgs = get_flashed_messages(with_categories=true) %}{% if msgs %}
+      <div class="flashes">{% for cat, m in msgs %}<div class="flash {{ cat }}" role="status">{{ m }}</div>{% endfor %}</div>
+      {% endif %}{% endwith %}
+      {% block content %}{% endblock %}
+      <p class="disclaimer">※ 점검 항목·시연 데이터는 실제 기관의 공식 안전점검 기준이 아닌 예시입니다. 위험도 및 안전 관련 최종 판단은 담당자가 수행합니다.<br>※ 실제 개인정보 및 보안이 필요한 철도 시설 정보는 입력하지 마세요. 운영 전환 전 보안성 검토가 필요합니다.</p>
+      </div>
+    </main>
+  </div>
+  <nav class="tabbar" aria-label="하단 메뉴">
+    {% for key, ic, label, href in NAV %}
+    <a href="{{ href }}" class="{{ 'on' if page == key }}" {% if key == 'inspect' %}data-act="inspect-nav"{% endif %}><span class="ic" aria-hidden="true">{{ ic }}</span><span>{{ label }}</span></a>
+    {% endfor %}
+  </nav>
+  <div class="actionbar hidden" id="actionbar"></div>
+</div>
+{% endblock %}
+<div id="modalRoot"></div>
+<div id="toasts" aria-live="polite"></div>
+{% if boot is defined %}<script type="application/json" id="boot">{{ boot|tojson }}</script>{% endif %}
+<script src="{{ url_for('static', filename='js/common.js') }}"></script>
+{% block scripts %}{% endblock %}
+</body>
+</html>

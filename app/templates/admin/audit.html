@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block title %}감사로그{% endblock %}
+{% block hdr_sub %}감사로그{% endblock %}
+{% block content %}
+<h1 class="page-title">감사로그 조회</h1>
+<div class="card filter-box">
+  <form method="get" class="adm-form">
+    <div class="field"><label class="f" for="a-from">시작일</label><input class="inp" id="a-from" type="date" name="from" value="{{ f }}"></div>
+    <div class="field"><label class="f" for="a-to">종료일</label><input class="inp" id="a-to" type="date" name="to" value="{{ t }}"></div>
+    <div class="field"><label class="f" for="a-user">사용자</label><select class="inp" id="a-user" name="user_id"><option value="">전체</option>{% for u in users %}<option value="{{ u.id }}" {{ 'selected' if uid == u.id }}>{{ u.username }} ({{ u.name }})</option>{% endfor %}</select></div>
+    <div class="field"><label class="f" for="a-act">동작</label><select class="inp" id="a-act" name="action"><option value="">전체</option>{% for k, v in actions.items() %}<option value="{{ k }}" {{ 'selected' if act == k }}>{{ v }}</option>{% endfor %}</select></div>
+    <div class="field"><button class="btn primary block" type="submit">조회</button></div>
+  </form>
+  <p class="hint m0">{{ total }}건 · 시각은 서울 기준</p>
+</div>
+<div class="card tbl-wrap">
+  <table class="tbl small">
+    <thead><tr><th>시각</th><th>사용자</th><th>동작</th><th>대상</th><th>상세</th><th>IP</th></tr></thead>
+    <tbody>
+    {% for r in rows %}
+    <tr>
+      <td class="nowrap">{{ r.created_at|kst_sec }}</td>
+      <td>{{ r.user.username if r.user else '-' }}</td>
+      <td>{{ actions.get(r.action, r.action) }}<br><span class="hint mono">{{ r.action }}</span></td>
+      <td>{{ r.target_type or '' }} {{ r.target_id or '' }}</td>
+      <td><pre class="detail">{% if r.detail is mapping %}{% for k, v in r.detail.items() %}{{ k }}: {{ v }}{% if not loop.last %}
+{% endif %}{% endfor %}{% else %}{{ r.detail or '' }}{% endif %}</pre></td>
+      <td>{{ r.ip or '' }}</td>
+    </tr>
+    {% else %}
+    <tr><td colspan="6"><div class="empty">기록이 없습니다.</div></td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {% if pages > 1 %}
+  <div class="pager">
+    {% set args = {'from': f, 'to': t, 'user_id': uid or '', 'action': act} %}
+    {% if page_no > 1 %}<a class="btn sm" href="{{ url_for('admin.audit_logs', page=page_no-1, **args) }}">← 이전</a>{% endif %}
+    <span>{{ page_no }} / {{ pages }}</span>
+    {% if page_no < pages %}<a class="btn sm" href="{{ url_for('admin.audit_logs', page=page_no+1, **args) }}">다음 →</a>{% endif %}
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

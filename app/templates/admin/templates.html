@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+{% from "_macros.html" import csrf %}
+{% block title %}체크리스트 템플릿 관리{% endblock %}
+{% block hdr_sub %}체크리스트 템플릿{% endblock %}
+{% macro hidden(act, extra={}) -%}
+{{ csrf() }}<input type="hidden" name="act" value="{{ act }}">{% if cur %}<input type="hidden" name="template_id" value="{{ cur.id }}">{% endif %}{% for k, v in extra.items() %}<input type="hidden" name="{{ k }}" value="{{ v }}">{% endfor %}
+{%- endmacro %}
+{% block content %}
+<h1 class="page-title">체크리스트 템플릿 관리</h1>
+<div class="notice">템플릿은 시연용 예시입니다. 실제 운영 시 공식 안전점검 기준을 반영하세요. 새 점검은 선택된 분야를 <b>복사</b>해서 만들어지므로, 템플릿을 수정·비활성화해도 <b>과거 점검 기록과 진행 중인 점검에는 영향이 없습니다.</b><br>
+  <b>추천 규칙</b>: 점검 대상·작업구역·작업 유형에 따라 분야가 자동 추천됩니다. '공통'은 항상 포함, '사용자 추가'는 자동 추천되지 않고 항목 구성 단계에서 선택합니다.</div>
+<div class="card">
+  <div class="tools">
+    {% for t in templates %}
+    <a class="btn sm {{ 'primary' if cur and t.id == cur.id }}" href="{{ url_for('admin.templates', t=t.id) }}">{{ t.name }}{{ ' ★기본' if t.is_default }}{{ ' (비활성)' if not t.is_active }}</a>
+    {% endfor %}
+  </div>
+  <form method="post" class="adm-form">{{ csrf() }}<input type="hidden" name="act" value="create_template">
+    <div class="field"><input class="inp" type="text" name="name" placeholder="새 템플릿 이름" maxlength="80" required aria-label="새 템플릿 이름"></div>
+    <div class="field"><select class="inp" name="copy_from" aria-label="복사할 템플릿"><option value="">빈 템플릿</option>{% for t in templates %}<option value="{{ t.id }}" {{ 'selected' if cur and t.id == cur.id }}>'{{ t.name }}' 복사</option>{% endfor %}</select></div>
+    <div class="field"><button class="btn sm primary" type="submit">＋ 템플릿 추가</button></div>
+  </form>
+</div>
+{% if cur %}
+<div class="card">
+  <form method="post" class="adm-form">{{ hidden('rename_template') }}
+    <div class="field"><input class="inp" type="text" name="name" value="{{ cur.name }}" maxlength="80" aria-label="템플릿 이름"></div>
+    <div class="field"><button class="btn sm" type="submit">이름 저장</button></div>
+  </form>
+  <div class="tools">
+    {% if not cur.is_default %}<form method="post">{{ hidden('set_default') }}<button class="btn sm" type="submit">기본 템플릿으로 지정</button></form>{% endif %}
+    <form method="post">{{ hidden('toggle_template') }}<button class="btn sm {{ 'outline' if cur.is_active }}" type="submit">{{ '템플릿 비활성화' if cur.is_active else '템플릿 활성화' }}</button></form>
+  </div>
+</div>
+{% for c in cur.categories %}
+<details class="tpl-cat{{ ' off' if not c.is_active }}" {{ 'open' if loop.first }}>
+  <summary>{{ c.name }} <span class="chip">{{ RULE_LABELS.get(c.rule, c.rule) }}</span><span class="chip none">{{ c.active_items|length }}항목</span>{% if not c.is_active %}<span class="chip ng">비활성</span>{% endif %}</summary>
+  <div class="tpl-item">
+    <form method="post" class="adm-form grow">{{ hidden('rename_category', {'category_id': c.id}) }}
+      <div class="field"><input class="inp" type="text" name="name" value="{{ c.name }}" maxlength="80" aria-label="분야 이름"></div>
+      <div class="field"><select class="inp" name="rule" aria-label="추천 규칙">{% for r in rules %}<option value="{{ r }}" {{ 'selected' if c.rule == r }}>{{ RULE_LABELS[r] }}</option>{% endfor %}</select></div>
+      <div class="field"><button class="btn sm" type="submit">분야 저장</button></div>
+    </form>
+    <form method="post">{{ hidden('move_category', {'category_id': c.id, 'delta': -1}) }}<button class="btn sm" type="submit" {{ 'disabled' if loop.first }} aria-label="분야 위로">▲</button></form>
+    <form method="post">{{ hidden('move_category', {'category_id': c.id, 'delta': 1}) }}<button class="btn sm" type="submit" {{ 'disabled' if loop.last }} aria-label="분야 아래로">▼</button></form>
+    <form method="post">{{ hidden('toggle_category', {'category_id': c.id}) }}<button class="btn sm" type="submit">{{ '분야 비활성화' if c.is_active else '분야 활성화' }}</button></form>
+    {% if not c.items %}<form method="post">{{ hidden('delete_category', {'category_id': c.id}) }}<button class="btn sm danger" type="submit">분야 삭제</button></form>{% endif %}
+  </div>
+  {% for i in c.items %}
+  <div class="tpl-item{{ ' off' if not i.is_active }}">
+    <form method="post" class="adm-form grow">{{ hidden('rename_item', {'item_id': i.id}) }}
+      <div class="field"><input class="inp" type="text" name="name" value="{{ i.name }}" maxlength="200" aria-label="항목 내용"></div>
+      <div class="field"><button class="btn sm" type="submit">저장</button></div>
+    </form>
+    <form method="post">{{ hidden('move_item', {'item_id': i.id, 'delta': -1}) }}<button class="btn sm" type="submit" {{ 'disabled' if loop.first }} aria-label="항목 위로">▲</button></form>
+    <form method="post">{{ hidden('move_item', {'item_id': i.id, 'delta': 1}) }}<button class="btn sm" type="submit" {{ 'disabled' if loop.last }} aria-label="항목 아래로">▼</button></form>
+    <form method="post">{{ hidden('toggle_item', {'item_id': i.id}) }}<button class="btn sm" type="submit">{{ '비활성화' if i.is_active else '활성화' }}</button></form>
+  </div>
+  {% endfor %}
+  <div class="tpl-item">
+    <form method="post" class="adm-form grow">{{ hidden('add_item', {'category_id': c.id}) }}
+      <div class="field"><input class="inp" type="text" name="name" placeholder="'{{ c.name }}' 항목 추가" maxlength="200" required aria-label="새 항목 내용"></div>
+      <div class="field"><button class="btn sm outline" type="submit">＋ 항목 추가</button></div>
+    </form>
+  </div>
+</details>
+{% endfor %}
+<div class="card mt12">
+  <form method="post" class="adm-form">{{ hidden('add_category') }}
+    <div class="field"><input class="inp" type="text" name="name" placeholder="새 분야 이름 (예: 보건·위생)" maxlength="80" required aria-label="새 분야 이름"></div>
+    <div class="field"><select class="inp" name="rule" aria-label="추천 규칙">{% for r in rules %}<option value="{{ r }}" {{ 'selected' if r == 'custom' }}>{{ RULE_LABELS[r] }}</option>{% endfor %}</select></div>
+    <div class="field"><button class="btn sm primary" type="submit">＋ 분야 추가</button></div>
+  </form>
+</div>
+{% endif %}
+{% endblock %}

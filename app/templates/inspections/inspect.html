@@ -1,0 +1,8 @@
+{% extends "base.html" %}
+{% set boot = {'pid': insp.public_id, 'step': step, 'consts': consts, 'admin': current_user.is_admin} %}
+{% block title %}안전점검 작성 — {{ APP_NAME }}{% endblock %}
+{% block hdr_sub %}안전점검 작성{% endblock %}
+{% block content %}
+<div id="inspect"><div class="empty"><span class="ic">⏳</span>불러오는 중…</div></div>
+{% endblock %}
+{% block scripts %}<script src="{{ url_for('static', filename='js/inspect.js') }}"></script>{% endblock %}

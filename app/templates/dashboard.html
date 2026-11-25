@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block title %}대시보드 — {{ APP_NAME }}{% endblock %}
+{% block hdr_sub %}대시보드{% endblock %}
+{% block content %}
+<h1 class="page-title">안전점검 현황</h1>
+<p class="page-sub"><span id="todayLbl"></span> 기준 · 제출·확정된 점검 기록으로 실시간 계산</p>
+<div class="start-wrap">
+  <button class="btn primary big" data-act="new-insp" type="button">＋ 신규 안전점검 시작</button>
+  <a class="btn outline big" href="{{ url_for('views.ng') }}" id="undoneBtn">⚠️ 미완료 조치</a>
+</div>
+<div id="dash"><div class="empty"><span class="ic">⏳</span>불러오는 중…</div></div>
+{% endblock %}
+{% block scripts %}<script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>{% endblock %}

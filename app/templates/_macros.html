@@ -1,0 +1,5 @@
+{% macro logo(size=40) -%}
+<svg width="{{ size }}" height="{{ size }}" viewBox="0 0 40 40" aria-hidden="true"><rect x="6" y="4" width="28" height="26" rx="7" fill="#0054A6"/><rect x="10" y="8" width="20" height="10" rx="2" fill="#fff"/><circle cx="13" cy="24" r="2.4" fill="#fff"/><circle cx="27" cy="24" r="2.4" fill="#fff"/><path d="M11 30l-4 6M29 30l4 6" stroke="#003A75" stroke-width="3" stroke-linecap="round"/><path d="M17 12.5l2.2 2.2 4-4.2" stroke="#2E9E5B" stroke-width="2.4" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+{%- endmacro %}
+
+{% macro csrf() -%}<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">{%- endmacro %}

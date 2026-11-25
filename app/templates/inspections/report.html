@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+{% set insp = r.insp %}
+{% set boot = {'pid': insp.public_id, 'version': insp.version, 'status': insp.status, 'perms': perms, 'mode': r.mode,
+               'opinion_edited': insp.opinion_edited == 1,'sig': {'inspector': r.sig_inspector is not none, 'confirmer': r.sig_confirmer is not none}} %}
+{% block title %}보고서 {{ insp.report_no or '' }} — {{ APP_NAME }}{% endblock %}
+{% block hdr_sub %}{{ '보고서 검토' if perms.edit else '점검 상세' }}{% endblock %}
+{% block content %}
+{% if perms.edit %}
+<div class="steps" role="tablist">
+  <a class="btn done" href="{{ url_for('views.info', pid=insp.public_id) }}">① 기본정보</a>
+  <a class="btn done" href="{{ url_for('views.compose', pid=insp.public_id) }}">② 항목 구성</a>
+  <a class="btn done" href="{{ url_for('views.check', pid=insp.public_id) }}">③ 점검 수행</a>
+  <a class="btn on" href="#" aria-current="page">④ 보고서 검토</a>
+</div>
+{% else %}
+<a class="btn ghost pl0" href="{{ url_for('views.history') }}">‹ 점검 이력</a>
+{% endif %}
+<h1 class="page-title">{{ insp.place or '(점검 장소 미입력)' }}</h1>
+<p class="page-sub">{{ insp.report_no or '관리번호 미발급' }} · {{ insp.inspect_dt }} · {{ insp.inspector_name }}({{ insp.inspector_org }}) · <span class="chip {{ {'confirmed':'ok','submitted':'warn','rejected':'ng'}.get(insp.status, '') }}">{{ insp.status_label }}</span></p>
+
+{% if insp.status == 'rejected' %}
+<div class="notice danger"><b>반려됨</b> — 사유: {{ insp.rejected_reason }}<br>{% if perms.edit %}점검 내용을 수정한 뒤 다시 서명하고 제출하세요.{% endif %}</div>
+{% elif insp.status == 'submitted' %}
+<div class="notice warn">제출된 점검입니다(확인 대기). 점검 결과는 잠겨 있으며, <b>개선조치 정보만</b> 부적합 관리에서 수정할 수 있습니다.{% if perms.review %} 내용을 검토한 뒤 확인자 서명 후 <b>확인(확정)</b> 또는 <b>반려</b>하세요.{% endif %}</div>
+{% elif insp.status == 'confirmed' %}
+<div class="notice">확정된 보고서(<b>{{ insp.report_no }}</b>)입니다. 최초 보고서는 확정 시점 그대로 보존되며, 이후 개선조치 변경은 <b>최신 개선조치 현황</b>에 반영됩니다.</div>
+{% elif perms.edit %}
+<div class="notice warn">점검 입력이 완료되면 보고서가 자동 생성됩니다. 종합의견은 <b>자동 생성 초안</b>이므로 내용을 검토·수정한 뒤 <b>점검자 서명 후 제출</b>하세요. 위험도·작업중지 필요 여부 등 최종 안전 판단은 담당자가 수행합니다.</div>
+{% endif %}
+
+{% if perms.edit %}
+<div class="card"><div class="sec-title"><h2>종합의견 (수정 가능)</h2><button class="btn sm outline" type="button" data-act="regen-opinion">↻ 초안 다시 생성</button></div>
+  <textarea class="inp" id="opinionTa" rows="9">{{ insp.opinion }}</textarea>
+  <p class="hint m0">본 앱의 종합의견은 참고용이며, 실제 안전 판정은 관련 규정과 담당자의 판단에 따릅니다.</p>
+</div>
+{% endif %}
+
+{% if perms.edit or perms.review %}
+<div class="card"><h2>✍ 서명 및 결재</h2>
+  <div class="sig-grid">
+    <div class="sig-box"><h3>점검자 서명</h3>
+      {% if perms.edit %}
+        <canvas class="sig-pad" data-role="inspector" aria-label="점검자 서명 입력란"></canvas>
+        <div class="tools mt8"><button class="btn sm" type="button" data-act="sig-clear" data-role="inspector">지우기</button><button class="btn sm outline" type="button" data-act="sig-save" data-role="inspector">서명 저장</button>
+          <span class="hint" id="sigSt-inspector">{% if r.sig_inspector %}<span class="sig-done">✔ 서명됨 ({{ r.sig_inspector.signed_at|kst }})</span>{% else %}서명 전{% endif %}</span></div>
+      {% elif r.sig_inspector %}<img class="sig-img" src="{{ url_for('api.view_signature', pid=insp.public_id, role='inspector') }}" alt="점검자 서명"><p class="hint m0">{{ r.sig_inspector.signer_name }} · {{ r.sig_inspector.signed_at|kst }}</p>{% endif %}
+    </div>
+    <div class="sig-box"><h3>확인자 서명</h3>
+      {% if perms.review %}
+        <canvas class="sig-pad" data-role="confirmer" aria-label="확인자 서명 입력란"></canvas>
+        <div class="tools mt8"><button class="btn sm" type="button" data-act="sig-clear" data-role="confirmer">지우기</button><button class="btn sm outline" type="button" data-act="sig-save" data-role="confirmer">서명 저장</button>
+          <span class="hint" id="sigSt-confirmer">{% if r.sig_confirmer %}<span class="sig-done">✔ 서명됨</span>{% else %}서명 전{% endif %}</span></div>
+      {% else %}<p class="hint">제출 후 확인자(또는 관리자)가 서명하고 확인합니다. 본인 점검은 확인할 수 없습니다.</p>{% endif %}
+    </div>
+  </div>
+</div>
+{% endif %}
+
+{% if r.mode != 'draft' %}
+<div class="card"><div class="sec-title"><h2>보고서</h2>
+  <div class="seg wide"><a class="btn {{ 'primary' if r.mode == 'original' }}" href="?mode=original">최초 보고서</a><a class="btn {{ 'primary' if r.mode == 'latest' }}" href="?mode=latest">최신 개선조치 현황</a></div></div>
+  <p class="hint">{{ '점검 확정 시점의 결과를 그대로 보존한 보고서입니다.' if r.mode == 'original' else '확정(제출) 이후 변경된 개선조치 상태·사진과 변경 이력을 반영한 보고서입니다.' }}{% if insp.status == 'submitted' %} 최초 보고서는 확인(확정) 시 보존됩니다.{% endif %}</p>
+{% else %}
+<div class="card"><h2>보고서 미리보기 (A4)</h2>
+{% endif %}
+  <div class="report-actions">
+    <a class="btn primary" href="{{ url_for('views.report_print', pid=insp.public_id, mode=r.mode) }}" target="_blank" rel="noopener">🖨 인쇄 / PDF 저장</a>
+    <a class="btn outline" href="{{ url_for('api.export_one', pid=insp.public_id) }}">⬇ JSON 내보내기</a>
+    {% if r.ng_list and insp.status in ('submitted', 'confirmed') %}<a class="btn" href="{{ url_for('views.ng') }}">⚠️ 부적합 관리</a>{% endif %}
+    {% if insp.status in ('submitted', 'confirmed') %}<button class="btn" type="button" data-act="copy-insp">📄 복사해서 새 점검</button>{% endif %}
+    {% if perms.delete %}<button class="btn danger" type="button" data-act="delete-insp" data-soft="{{ 0 if insp.status in ('draft','rejected') else 1 }}">🗑 삭제</button>{% endif %}
+  </div>
+  <div class="report-stage" id="rptStage"><div class="a4-scale"><div class="a4 rpt">{% include "inspections/_report.html" %}</div></div></div>
+</div>
+{% endblock %}
+{% block scripts %}<script src="{{ url_for('static', filename='js/signature.js') }}"></script><script src="{{ url_for('static', filename='js/report.js') }}"></script>{% endblock %}

@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% set boot = {'admin': current_user.is_admin} %}
+{% block title %}설정 — {{ APP_NAME }}{% endblock %}
+{% block hdr_sub %}설정{% endblock %}
+{% block content %}
+<h1 class="page-title">설정</h1>
+<p class="page-sub">저장 방식: 서버 DB(SQLite) + 서버 파일 저장소 — 브라우저를 바꿔도 같은 데이터가 보입니다.</p>
+
+<div class="card"><h2>👤 내 계정</h2>
+  <dl class="kv"><dt>아이디</dt><dd>{{ current_user.username }}</dd><dt>이름</dt><dd>{{ current_user.name }}</dd>
+    <dt>역할</dt><dd>{{ current_user.role_label }}</dd><dt>소속</dt><dd>{{ current_user.org or '-' }}</dd></dl>
+  <p class="hint">같은 소속(계정 기준) 사용자끼리 서로의 점검을 조회할 수 있습니다. 소속 변경은 관리자에게 요청하세요.</p>
+  <a class="btn outline" href="{{ url_for('auth.password') }}">비밀번호 변경</a>
+</div>
+
+<div class="card"><h2>⏱ 업무시간 절감 기준</h2>
+  <div class="grid2">
+    <div class="field"><label class="f" for="s-before">기존 점검 1회 소요시간(분)</label><input type="number" min="1" class="inp" id="s-before" {{ 'disabled' if not current_user.is_admin }}></div>
+    <div class="field"><label class="f" for="s-after">자동화 후 예상 소요시간(분)</label><input type="number" min="0" class="inp" id="s-after" {{ 'disabled' if not current_user.is_admin }}></div>
+  </div>
+  {% if current_user.is_admin %}<button class="btn primary" type="button" data-act="save-time">저장</button>{% endif %}
+  <p class="hint">※ 가상 시나리오 기반 예상 수치이며 실측값이 아닙니다.{% if not current_user.is_admin %} 변경은 관리자만 할 수 있습니다.{% endif %}</p>
+</div>
+
+{% if current_user.is_admin %}
+<div class="card"><h2>💾 데이터 백업 및 복원 (관리자)</h2>
+  <div class="notice warn">전체 JSON 내보내기는 사진을 포함합니다. 서버 전체 백업(DB + 사진 원본)은 서버에서 <span class="mono">flask backup</span> 명령을 사용하세요.</div>
+  <div class="tools">
+    <a class="btn primary" href="{{ url_for('api.export_all') }}">⬇ 전체 데이터 내보내기 (JSON, 사진 포함)</a>
+    <button class="btn outline" type="button" data-act="import">⬆ JSON 불러오기</button>
+  </div>
+  <p class="hint">불러오기는 이 웹앱의 내보내기 파일과 <b>참고 아티팩트(단일 HTML)의 전체 백업 파일</b>을 모두 지원합니다. 형식을 검증한 뒤, 같은 ID의 점검이 있으면 덮어쓰기·건너뛰기를 선택할 수 있습니다.</p>
+  <input type="file" id="importFile" accept=".json,application/json" class="hidden">
+  <div id="importBox"></div>
+</div>
+<div class="card"><h2>🛠 관리자 메뉴</h2>
+  <div class="tools">
+    <a class="btn" href="{{ url_for('admin.users') }}">👥 사용자 관리</a>
+    <a class="btn" href="{{ url_for('admin.templates') }}">📋 체크리스트 템플릿</a>
+    <a class="btn" href="{{ url_for('admin.audit_logs') }}">🔍 감사로그</a>
+  </div>
+</div>
+{% endif %}
+{% endblock %}
+{% block scripts %}<script src="{{ url_for('static', filename='js/settings.js') }}"></script>{% endblock %}

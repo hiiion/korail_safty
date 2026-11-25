@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% set boot = {'consts': consts, 'admin': current_user.is_admin} %}
+{% block title %}점검 이력 — {{ APP_NAME }}{% endblock %}
+{% block hdr_sub %}점검 이력{% endblock %}
+{% block content %}
+<h1 class="page-title">점검 이력</h1>
+<p class="page-sub" id="histSub">조회 가능한 점검 기록</p>
+<div class="card filter-box">
+  <div class="grid2">
+    <div class="field"><label class="f" for="hf-from">시작일</label><input type="date" class="inp" id="hf-from" data-hf="from"></div>
+    <div class="field"><label class="f" for="hf-to">종료일</label><input type="date" class="inp" id="hf-to" data-hf="to"></div>
+  </div>
+  <div class="grid3">
+    <div class="field"><label class="f" for="hf-inspector">점검자</label><input class="inp" id="hf-inspector" data-hf="inspector" placeholder="이름 검색"></div>
+    <div class="field"><label class="f" for="hf-dept">소속</label><input class="inp" id="hf-dept" data-hf="dept" placeholder="소속 검색"></div>
+    <div class="field"><label class="f" for="hf-place">장소</label><input class="inp" id="hf-place" data-hf="place" placeholder="장소 검색"></div>
+  </div>
+  <div class="grid3">
+    <div class="field"><label class="f" for="hf-type">점검 유형</label><select class="inp" id="hf-type" data-hf="type"><option value="">전체</option>{% for t in consts.INSP_TYPES %}<option>{{ t }}</option>{% endfor %}</select></div>
+    <div class="field"><label class="f" for="hf-target">점검 대상</label><select class="inp" id="hf-target" data-hf="target"><option value="">전체</option>{% for t in consts.TARGETS %}<option>{{ t }}</option>{% endfor %}</select></div>
+    <div class="field"><label class="f" for="hf-ng">부적합 유무</label><select class="inp" id="hf-ng" data-hf="ng"><option value="">전체</option><option value="y">부적합 있음</option><option value="n">부적합 없음</option></select></div>
+  </div>
+  <div class="grid3">
+    <div class="field"><label class="f" for="hf-status">결재 상태</label><select class="inp" id="hf-status" data-hf="status"><option value="">전체</option><option value="completed">제출·확정</option>{% for k, v in STATUS_LABELS.items() %}<option value="{{ k }}">{{ v }}</option>{% endfor %}</select></div>
+    <div class="field"><label class="f" for="hf-mine">작성자</label><select class="inp" id="hf-mine" data-hf="mine"><option value="">전체</option><option value="1">내 점검만</option></select></div>
+  </div>
+  <div class="tools m0">
+    <button class="btn sm" type="button" data-act="hf-reset">필터 초기화</button>
+    <button class="btn sm outline" type="button" data-act="csv" data-kind="summary">⬇ 점검 요약 CSV</button>
+    <button class="btn sm outline" type="button" data-act="csv" data-kind="detail">⬇ 항목별 상세 CSV</button>
+    <span class="hint nowrap" id="hfCount"></span>
+  </div>
+</div>
+<div class="card" id="histList"><div class="empty"><span class="ic">⏳</span>불러오는 중…</div></div>
+<div class="pager" id="pager"></div>
+{% endblock %}
+{% block scripts %}<script src="{{ url_for('static', filename='js/history.js') }}"></script>{% endblock %}

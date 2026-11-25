@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% block title %}오류 {{ status }}{% endblock %}
+{% block body %}
+{% if current_user.is_authenticated %}{{ super() }}{% else %}
+<section id="login"><div class="login-card"><h1>오류 ({{ status }})</h1><p>{{ message }}</p>
+<a class="btn primary block" href="{{ url_for('auth.login') }}">로그인 화면으로</a></div></section>
+{% endif %}
+{% endblock %}
+{% block content %}
+<div class="empty card"><span class="ic">❗</span><b>오류 ({{ status }})</b><br>{{ message }}<br><br>
+<a class="btn primary" href="{{ url_for('views.home') }}">대시보드로</a></div>
+{% endblock %}
